@@ -2,7 +2,43 @@
 .equ LEGO_DATA, 0x00
 .equ LEGO_CTRL, 0x04
 
+.equ ADDR_JP1, 0xFF200060 
+.equ ADDR_JP1_IRQ, 0x800 
+
 .global _start
+_start: 	
+
+    movia r8, ADDR_JP1 		  # load address GPIO JP1 into r8
+    movia r9, 0x07f557ff      # set motor,threshold and sensors bits to output, set state and sensor valid bits to inputs 
+    stwio r9, 4(r8)
+ 	
+	# and set sensor 0 to threshold to 5 and enable motor
+	movia r9, 0xfabffbfe
+	stwio r9, 0(r8)
+
+	# and set sensor 1 to threshold to 5 and enable motor
+	movia r9, 0xfabfeffe
+	stwio r9, 0(r8)
+
+	# disable threshold register and enable state mode
+	movia r9, 0xfadffffe
+	stwio r9, 0(r8)
+	
+	#Write to Edge Capture Register to clear
+	movia r9, 0xFFFFFFFF 
+	stwio r9, 12(r8) 
+	
+	movia r9, 0x18000000 
+	stwio r9, 8(r8)
+
+	movia r8, ADDR_JP1_IRQ 
+	wrctl ctl3, r8
+
+	movia r8, 1
+	wrctl ctl0, r8  
+
+LOOP:
+	br LOOP
 
 # ################# #
 # DRIVING FUNCTIONS #
@@ -54,5 +90,28 @@ turn_right:
 	movia	 r9, 0xFFFFFFFC       # motor0 disabled, motor1 enabled, direction forward. (1100)
 	stwio	 r9, 0(r8)
 	ret
+	
+# ################# #
+# HANDLER STUFF     #
+# ################# #
+.section .exceptions, "ax"
 
-_start:
+interrupt_handler:
+	# store stack stuff
+	
+	
+	rdctl et, ctl4
+	andi et, et, 0x800 # check if interrupt pending from IRQ11	
+	movia r2, ADDR_JP1_IRQ
+	and r2, r2, et 
+	beq r2, r0, interrupt_epilogue
+	
+UART_handler:
+	# do stuff here -- check which sensor, take appropriate action, etc...
+
+interrupt_epilogue:
+	# load back into stack
+	
+	eret
+	
+	

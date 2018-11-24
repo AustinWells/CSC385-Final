@@ -1,44 +1,56 @@
 .equ LEGO_BASE, 0xFF200060   
 .equ LEGO_DATA, 0x00
 .equ LEGO_CTRL, 0x04
-
-.equ ADDR_JP1, 0xFF200060 
 .equ ADDR_JP1_IRQ, 0x800 
 
 .global _start
 _start: 	
 
-    movia r8, ADDR_JP1 		  # load address GPIO JP1 into r8
-    movia r9, 0x07f557ff      # set motor,threshold and sensors bits to output, set state and sensor valid bits to inputs 
-    stwio r9, 4(r8)
- 	
-	# and set sensor 0 to threshold to 5 and enable motor
-	movia r9, 0xfabffbfe
-	stwio r9, 0(r8)
-
-	# and set sensor 1 to threshold to 5 and enable motor
-	movia r9, 0xfabfeffe
-	stwio r9, 0(r8)
-
-	# disable threshold register and enable state mode
-	movia r9, 0xfadffffe
-	stwio r9, 0(r8)
+MAIN_LOOP:
+	call drive_forward
+    movia  r22, LEGO_BASE
 	
-	#Write to Edge Capture Register to clear
-	movia r9, 0xFFFFFFFF 
-	stwio r9, 12(r8) 
-	
-	movia r9, 0x18000000 
-	stwio r9, 8(r8)
+    left:
+    #read left
+    	ldwio  r17,  0(r22)
+		movia  r16, 0xffffff00
+		or   r17, r17, r16
+		movia  r16, 0xfffeffff
+		and  r17, r17, r16
+		
+		stwio  r17, 0(r22)
+		ldwio  r18,  0(r22)          # checking for valid data sensor 3
+		srli   r19,  r18,17          # bit 17 is valid bit for sensor 3           
+		andi   r19,  r19,0x1
+		bne    r0,  r19,left        #invalid
+    
+    left_good:
+	    srli   r18, r18, 27          # shift to the right by 27 bits so that 4-bit sensor value is in lower 4 bits 
+	    andi   r20, r18, 0x0f
 
-	movia r8, ADDR_JP1_IRQ 
-	wrctl ctl3, r8
-
-	movia r8, 1
-	wrctl ctl0, r8  
-
-LOOP:
-	br LOOP
+	#read right
+	right:
+		ldwio  r17,  0(r22)
+		movia  r16, 0xfffffb00
+		or   r17, r17, r16
+		movia  r16, 0xfffffbff
+		and  r17, r17, r16
+		
+		stwio  r17, 0(r22)
+		ldwio  r18,  0(r22)          # checking for valid data sensor 3
+		srli   r23,  r18,11          # bit 17 is valid bit for sensor 3           
+		andi   r23,  r23,0x1
+		bne    r0,  r23,right        #invalid
+        
+    right_good:
+	    srli   r18, r18, 27          # shift to the right by 27 bits so that 4-bit sensor value is in lower 4 bits 
+	    andi   r21, r18, 0x0f 
+    
+    change:
+		bgtu r21, r20, motor_left
+		bgeu r20, r21, motor_right
+    
+	br MAIN_LOOP
 
 # ################# #
 # DRIVING FUNCTIONS #
@@ -100,11 +112,11 @@ interrupt_handler:
 	# store stack stuff
 	
 	
-	rdctl et, ctl4
-	andi et, et, 0x800 # check if interrupt pending from IRQ11	
-	movia r2, ADDR_JP1_IRQ
-	and r2, r2, et 
-	beq r2, r0, interrupt_epilogue
+	#rdctl et, ctl4
+	#andi et, et, 0x800 # check if interrupt pending from IRQ11	
+	#movia r2, ADDR_JP1_IRQ
+	#and r2, r2, et 
+	#beq r2, r0, interrupt_epilogue
 	
 UART_handler:
 	# do stuff here -- check which sensor, take appropriate action, etc...

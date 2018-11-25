@@ -22,7 +22,7 @@ MAIN_LOOP:
 		ldwio  r18,  0(r22)          # checking for valid data sensor 3
 		srli   r19,  r18,17          # bit 17 is valid bit for sensor 3           
 		andi   r19,  r19,0x1
-		bne    r0,  r19,left        #invalid
+		bne    r0,  r19,right        #invalid
     
     	right_valid:
 	    	srli   r18, r18, 27          # shift to the right by 27 bits so that 4-bit sensor value is in lower 4 bits 
@@ -40,7 +40,7 @@ MAIN_LOOP:
 		ldwio  r18,  0(r22)          # checking for valid data sensor 3
 		srli   r23,  r18,11          # bit 17 is valid bit for sensor 3           
 		andi   r23,  r23,0x1
-		bne    r0,  r23,right        #invalid
+		bne    r0,  r23,left        #invalid
         
     	left_valid:
 	    	srli   r18, r18, 27          # shift to the right by 27 bits so that 4-bit sensor value is in lower 4 bits 

@@ -7,7 +7,8 @@
 _start: 	
 
 MAIN_LOOP:
-	
+		call drive_forward
+        
     	movia  r22, LEGO_BASE
 	
     	right:
@@ -48,11 +49,17 @@ MAIN_LOOP:
     
     steer:
         #r20 holds value of right, r21 holds value of left
-        movia r22, 0x5FFFF # this is our threshold. if you go over this, the sensor is on the black
+        movia r22, 0x5 # this is our threshold. if you go over this, the sensor is on the black
 
 	bgtu r20, r22, steer_right
-        bgtu r21, r22, steer_left
-        
+    bgtu r21, r22, steer_left
+    
+    all_clear:
+    	call drive_forward
+    
+	br MAIN_LOOP
+
+    
     steer_left:
         call turn_left
         br MAIN_LOOP
@@ -61,11 +68,7 @@ MAIN_LOOP:
         call turn_right
         br MAIN_LOOP
     
-    all_clear:
-    	call drive_forward
     
-	br MAIN_LOOP
-
 # ################# #
 # DRIVING FUNCTIONS #
 # ################# # ########################################

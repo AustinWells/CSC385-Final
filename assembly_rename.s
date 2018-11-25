@@ -5,7 +5,7 @@
 
 .global _start
 _start: 	
-
+	call drive_forward
 MAIN_LOOP:
         
     	movia  r22, LEGO_BASE

@@ -5,8 +5,12 @@
 
 .global _start
 _start: 	
-	call drive_forward
+
+        call drive_forward
+
 MAIN_LOOP:
+
+        call drive_brake
         
     	movia  r22, LEGO_BASE
 	
@@ -77,6 +81,17 @@ MAIN_LOOP:
 # We use a differential steering. Meaning to turn left you   #
 # simply turn off left motor, go forward with right motor.   #
 # ############################################################
+drive_brake:
+    movia  r8, LEGO_BASE     
+
+    movia  r9, 0x07f557ff       # set direction for motors to all output 
+    stwio  r9, 4(r8)
+
+    movia	 r9, 0xFFFFFFFF       # motor0 enabled, direction forward (00)
+                                  # motor1 enabled, direction forward (00)
+    stwio	 r9, 0(r8)
+    ret
+
 drive_forward:
 	movia  r8, LEGO_BASE     
 

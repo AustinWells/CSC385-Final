@@ -7,7 +7,6 @@
 _start: 	
 
 MAIN_LOOP:
-		call drive_forward
         
     	movia  r22, LEGO_BASE
 	

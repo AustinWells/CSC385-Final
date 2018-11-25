@@ -50,8 +50,8 @@ MAIN_LOOP:
         #r20 holds value of right, r21 holds value of left
         movia r22, 0x5 # this is our threshold. if you go over this, the sensor is on the black
 
-	bgtu r20, r22, steer_right
-    bgtu r21, r22, steer_left
+	bgtu r20, r22, steer_left
+    bgtu r21, r22, steer_right
     
     all_clear:
     	call drive_forward

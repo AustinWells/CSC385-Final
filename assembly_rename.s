@@ -7,7 +7,7 @@
 _start: 	
 
 MAIN_LOOP:
-	call drive_forward
+	
     	movia  r22, LEGO_BASE
 	
     	right:
@@ -60,6 +60,9 @@ MAIN_LOOP:
     steer_right:
         call turn_right
         br MAIN_LOOP
+    
+    all_clear:
+    	call drive_forward
     
 	br MAIN_LOOP
 

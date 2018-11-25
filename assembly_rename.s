@@ -8,10 +8,10 @@ _start:
 
 MAIN_LOOP:
 	call drive_forward
-    movia  r22, LEGO_BASE
+    	movia  r22, LEGO_BASE
 	
-    left:
-    #read left
+    	right:
+    	#read right
     	ldwio  r17,  0(r22)
 		movia  r16, 0xffffff00
 		or   r17, r17, r16
@@ -24,12 +24,12 @@ MAIN_LOOP:
 		andi   r19,  r19,0x1
 		bne    r0,  r19,left        #invalid
     
-    left_good:
-	    srli   r18, r18, 27          # shift to the right by 27 bits so that 4-bit sensor value is in lower 4 bits 
-	    andi   r20, r18, 0x0f
+    	right_valid:
+	    	srli   r18, r18, 27          # shift to the right by 27 bits so that 4-bit sensor value is in lower 4 bits 
+	    	andi   r20, r18, 0x0f
 
-	#read right
-	right:
+	#read left
+	left:
 		ldwio  r17,  0(r22)
 		movia  r16, 0xfffffb00
 		or   r17, r17, r16
@@ -42,13 +42,24 @@ MAIN_LOOP:
 		andi   r23,  r23,0x1
 		bne    r0,  r23,right        #invalid
         
-    right_good:
-	    srli   r18, r18, 27          # shift to the right by 27 bits so that 4-bit sensor value is in lower 4 bits 
-	    andi   r21, r18, 0x0f 
+    	left_valid:
+	    	srli   r18, r18, 27          # shift to the right by 27 bits so that 4-bit sensor value is in lower 4 bits 
+	    	andi   r21, r18, 0x0f 
     
-    change:
-		bgtu r21, r20, motor_left
-		bgeu r20, r21, motor_right
+    steer:
+        #r20 holds value of right, r21 holds value of left
+        movia r22, 0x5FFFF # this is our threshold. if you go over this, the sensor is on the black
+
+	bgtu r20, r22, steer_right
+        bgtu r21, r22, steer_left
+        
+    steer_left:
+        call turn_left
+        br MAIN_LOOP
+        
+    steer_right:
+        call turn_right
+        br MAIN_LOOP
     
 	br MAIN_LOOP
 

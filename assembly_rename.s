@@ -9,8 +9,6 @@ _start:
         call drive_forward
 
 MAIN_LOOP:
-
-        call drive_brake
         
     	movia  r22, LEGO_BASE
 	
@@ -53,7 +51,7 @@ MAIN_LOOP:
     steer:
         #r20 holds value of right, r21 holds value of left
         movia r22, 0x5 # this is our threshold. if you go over this, the sensor is on the black
-
+	
 	bgtu r20, r22, steer_left
     bgtu r21, r22, steer_right
     
@@ -64,12 +62,17 @@ MAIN_LOOP:
 
     
     steer_left:
+		bgtu r21, r22, steer_reverse
         call turn_left
         br MAIN_LOOP
         
     steer_right:
         call turn_right
         br MAIN_LOOP
+		
+	steer_reverse:
+		call drive_reverse
+		br MAIN_LOOP
     
     
 # ################# #
@@ -92,7 +95,7 @@ drive_brake:
     stwio	 r9, 0(r8)
     ret
 
-drive_forward:
+drive_reverse:
 	movia  r8, LEGO_BASE     
 
 	movia  r9, 0x07f557ff       # set direction for motors to all output 
@@ -103,7 +106,7 @@ drive_forward:
 	stwio	 r9, 0(r8)
 	ret
   
-drive_reverse:
+drive_forward:
 	movia  r8, LEGO_BASE     
 
 	movia  r9, 0x07f557ff       # set direction for motors to all output 
@@ -120,7 +123,7 @@ turn_left:
 	movia  r9, 0x07f557ff       # set direction for motors to all output 
 	stwio  r9, 4(r8)
 
-	movia	 r9, 0xFFFFFFF3       # motor0 disabled, motor1 enabled, direction forward. (0011)
+	movia	 r9, 0xFFFFFFFB      # motor0 disabled, motor1 enabled, direction forward. (0011)
 	stwio	 r9, 0(r8)
 	ret
     
@@ -130,7 +133,7 @@ turn_right:
 	movia  r9, 0x07f557ff       # set direction for motors to all output 
 	stwio  r9, 4(r8)
 
-	movia	 r9, 0xFFFFFFFC       # motor0 disabled, motor1 enabled, direction forward. (1100)
+	movia	 r9, 0xFFFFFFFE      # motor0 disabled, motor1 enabled, direction forward. (1100)
 	stwio	 r9, 0(r8)
 	ret
 	

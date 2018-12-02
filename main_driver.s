@@ -174,7 +174,7 @@ turn_right:
 .section .exceptions, "ax"
 
 interrupt_handler:
-    addi sp, sp, -24 # allocate stack space
+    addi sp, sp, -32 # allocate stack space
     stw ra, 0(sp)
 	stw r1, 4(sp)
     stw r2, 8(sp)
@@ -212,6 +212,6 @@ interrupt_epilogue:
 	ldw r10, 20(sp)
 	ldw r11, 24(sp)
 	ldw r5, 28(sp)
-	addi sp, sp, 24 # restore registers
+	addi sp, sp, 32 # restore registers
 	subi ea, ea, 4
 	eret

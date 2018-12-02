@@ -3,16 +3,32 @@
 .equ LEGO_CTRL, 0x04
 .equ ADDR_JP1_IRQ, 0x800 
 
+.equ ADDR_PUSHBUTTONS, 0xFF200050
+.equ IRQ_PUSHBUTTONS, 0x02
+
 .global _start
 _start: 	
 
+		#SETTING UP PUSH-BUTTON INTERRUPTS
+        movia r2, ADDR_PUSHBUTTONS
+        movia r3,0x3	  # Enable interrrupt mask = 0011
+        stwio r3,8(r2)  # Enable interrupts on pushbutton 0 and 1
+        stwio r3,12(r2) # Clear edge capture register to prevent unexpected interrupt
+        
+        movia r2, IRQ_PUSHBUTTONS
+        wrctl ctl3,r2   # Enable bit 1 - Pushbuttons use IRQ 1
+
+        movia r2,1
+        wrctl ctl0,r2   # Enable global Interrupts on Processor 
+
+		#BEGIN DRIVING
         call drive_forward
 
 MAIN_LOOP:
         
-    	movia  r22, LEGO_BASE
+    movia  r22, LEGO_BASE
 	
-    	right:
+    right:
     	#read right
     	ldwio  r17,  0(r22)
 		movia  r16, 0xffffff00
@@ -136,28 +152,31 @@ turn_right:
 	movia	 r9, 0xFFFFFFFE      # motor0 disabled, motor1 enabled, direction forward. (1100)
 	stwio	 r9, 0(r8)
 	ret
-	
-# ################# #
-# HANDLER STUFF     #
-# ################# #
+
+
+# ################### #
+# INTERRUPT STUFF     #
+# ################### #
 .section .exceptions, "ax"
 
 interrupt_handler:
 	# store stack stuff
 	
-	
-	#rdctl et, ctl4
-	#andi et, et, 0x800 # check if interrupt pending from IRQ11	
-	#movia r2, ADDR_JP1_IRQ
+read_interrupt:    
+	#rdctl r1, ctl4
+	#andi r1, r1, 0x02 # check if interrupt from push buttons
+	#movia r2, IRQ_PUSHBUTTONS
 	#and r2, r2, et 
 	#beq r2, r0, interrupt_epilogue
-	
-UART_handler:
-	# do stuff here -- check which sensor, take appropriate action, etc...
+
+STOP:
+	# do stuff here 
+    
+    	#call drive_brake
+	br STOP
 
 interrupt_epilogue:
 	# load back into stack
 	
+	subi ea, ea, 4
 	eret
-	
-	

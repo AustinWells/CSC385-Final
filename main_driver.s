@@ -185,8 +185,6 @@ interrupt_handler:
 	stw r5, 28(sp)
 	
 read_interrupt:    
-	rdctl r1, ctl4
-	andi r1, r1, 0x02
 	movia r2, IRQ_PUSHBUTTONS
 	and r2, r2, et 
 	bne r2, r0, interrupt_epilogue

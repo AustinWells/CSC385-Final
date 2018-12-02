@@ -6,8 +6,15 @@
 .equ ADDR_PUSHBUTTONS, 0xFF200050
 .equ IRQ_PUSHBUTTONS, 0x02
 
+.data
+
+drive_state:
+	.byte 0 #0 for stopped, 1 for driving
+
+.text
 .global _start
 _start: 	
+		movia sp, 0x03FFFFFC
 
 		#SETTING UP PUSH-BUTTON INTERRUPTS
         movia r2, ADDR_PUSHBUTTONS
@@ -24,9 +31,16 @@ _start:
 		#BEGIN DRIVING
         call drive_forward
 
+STALL_WAIT:
+	call drive_brake 
+
 MAIN_LOOP:
         
     movia  r22, LEGO_BASE
+    
+    movia r4, drive_state
+    ldw r4, 0(r4)
+    beq r4, r0, STALL_WAIT
 	
     right:
     	#read right
@@ -160,23 +174,44 @@ turn_right:
 .section .exceptions, "ax"
 
 interrupt_handler:
-	# store stack stuff
+    addi sp, sp, -24 # allocate stack space
+    stw ra, 0(sp)
+	stw r1, 4(sp)
+    stw r2, 8(sp)
+	stw r8, 12(sp)
+	stw r9, 16(sp)
+	stw r10, 20(sp)
+	stw r11, 24(sp)
+	stw r5, 28(sp)
 	
 read_interrupt:    
-	#rdctl r1, ctl4
-	#andi r1, r1, 0x02 # check if interrupt from push buttons
-	#movia r2, IRQ_PUSHBUTTONS
-	#and r2, r2, et 
-	#beq r2, r0, interrupt_epilogue
+	rdctl r1, ctl4
+	andi r1, r1, 0x02
+	movia r2, IRQ_PUSHBUTTONS
+	and r2, r2, et 
+	bne r2, r0, interrupt_epilogue
 
-STOP:
-	# do stuff here 
+toggle_flag:
+    movia r8, drive_state
+    ldw r9, 0(r8)
+    movi r10, 0x1
+    xor r11, r9, r8 #invert the bit to toggle the state
+    stw r11, 0(r8)
     
-    	#call drive_brake
-	br STOP
+clear_edge_capture:
+    movia r2, ADDR_PUSHBUTTONS
+	movi r3, 0x03
+	stwio r3, 12(r2) # Clear edge capture register to prevent unexpected interrupt
 
 interrupt_epilogue:
-	# load back into stack
-	
+    ldw ra, 0(sp)
+	ldw r1, 4(sp)
+    ldw r2, 8(sp)
+	ldw r8, 12(sp)
+	ldw r9, 16(sp)
+	ldw r10, 20(sp)
+	ldw r11, 24(sp)
+	ldw r5, 28(sp)
+	addi sp, sp, 24 # restore registers
 	subi ea, ea, 4
 	eret

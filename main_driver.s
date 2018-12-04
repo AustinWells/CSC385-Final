@@ -3,11 +3,15 @@
 .equ LEGO_CTRL, 0x04
 .equ ADDR_JP1_IRQ, 0x800 
 
+.equ ADDR_TIMER, 0xFF202000
+.equ IRQ_TIMER, 0x01
+
 .equ ADDR_Front_buffer, 0xFF203020
 .equ ADDR_Video_in_controller, 0xFF20306C
 
 .equ ADDR_PUSHBUTTONS, 0xFF200050
 .equ IRQ_PUSHBUTTONS, 0x02
+
 
 .data
 
@@ -19,23 +23,12 @@ drive_state:
 
 _start: 	
 
-_init_video:
-
-	  	movia r8,ADDR_Video_in_controller
-		movi  r9,0x4
-		stwio r9,0(r8)        # Enable video in streaming
-
-		movia r8,ADDR_Front_buffer
-		movi  r9,0x1
-		stwio r9,0(r8)        # Enable double buffer (swap pixel data from back buffer to front buffer)
-
-foo:
-		br foo
-        
-
 
 		movia sp, 0x03FFFFFC
 
+		call _init_video
+		call _init_timer
+	
 		#SETTING UP PUSH-BUTTON INTERRUPTS
         movia r2, ADDR_PUSHBUTTONS
         movia r3,0x3	  # Enable interrrupt mask = 0011
@@ -43,7 +36,10 @@ foo:
         stwio r3,12(r2) # Clear edge capture register to prevent unexpected interrupt
         
         movia r2, IRQ_PUSHBUTTONS
+        ori   r2, r2, IRQ_TIMER
+       
         wrctl ctl3,r2   # Enable bit 1 - Pushbuttons use IRQ 1
+
 
         movia r2,1
         wrctl ctl0,r2   # Enable global Interrupts on Processor 
@@ -187,6 +183,75 @@ turn_right:
 	stwio	 r9, 0(r8)
 	ret
 
+# ################### #
+# CAMERA IN STUFF     #
+# ################### #
+_init_video:
+
+	  	movia r8,ADDR_Video_in_controller
+		movi  r9,0x4
+		stwio r9,0(r8)        # Enable video in streaming
+
+		movia r8,ADDR_Front_buffer
+		movi  r9,0x1
+		stwio r9,0(r8)        # Enable double buffer (swap pixel data from back buffer to front buffer)
+		ret
+
+
+#if red is more than 25 then we consider the color to be red
+count_red:
+
+	mov  r3, r0 #offset into buffer
+    movi r5, 25 #to determine if it's red
+    mov  r6, r0 #number of "reds"
+    movia r7, 76800 #loop iterations
+
+count_loop:
+	
+    beq  r0, r7, red_return
+    
+    ldh  r2, (r3)ADDR_Front_buffer
+    movi r4, 0xF8 
+    
+    slli r4, r4, 11 #take the red component
+    and  r2, r2, r4 #place it in r4 and shift it
+	srli r2, r2, 11 #to get a number between 0-31
+    
+    bgeu r5, r2, not_red
+	
+    addi r6, r6, 1 #we found a red
+
+not_red:
+	
+    addi r3, r3, 4
+    subi r7, r7, 1
+	br count_loop
+
+red_return:
+	mov r3, r0
+    mov r2, r6
+	ret
+
+# ################### #
+# TIMER STUFF         #
+# ################### #
+_init_timer:
+
+   movia r7, ADDR_TIMER                    
+   stwio r0, 0(r7)   
+   
+   movui r2, 0x05F4
+   stwio r2, 4(r7)                        
+   movui r2, 0xE100
+   stwio r2, 8(r7)                          # Set the timer for 1 sec
+   
+   stwio r0, 12(r7)
+   stwio r0, 4(r7)                         
+	
+   movui r2, 5
+   stwio r2, 4(r7)                          # Start the timer with interrupts
+   ret
+
 
 # ################### #
 # INTERRUPT STUFF     #
@@ -194,7 +259,7 @@ turn_right:
 .section .exceptions, "ax"
 
 interrupt_handler:
-    addi sp, sp, -32 # allocate stack space
+    addi sp, sp, -44 # allocate stack space
     stw ra, 0(sp)
 	stw r1, 4(sp)
     stw r2, 8(sp)
@@ -203,11 +268,41 @@ interrupt_handler:
 	stw r10, 20(sp)
 	stw r11, 24(sp)
 	stw r5, 28(sp)
-	
+    stw r3, 32(sp)
+    stw r4, 36(sp)
+    stw r6, 40(sp)
+   	stw r7, 44(sp)
+	rdctl et, ipending
+    
 read_interrupt:    
 	movia r2, IRQ_PUSHBUTTONS
 	and r2, r2, et 
-	bne r2, r0, interrupt_epilogue
+	beq r2, r0, check_timer
+    br toggle_flag
+    
+check_timer:
+    movia r2, IRQ_TIMER
+	and r2, r2, et 
+	beq r2, r0, interrupt_epilogue
+
+check_camera:
+	call count_red #number of red pixels in camera(stored in r2)
+	movia r6, 19200 #check if more than half the screen is red
+	bge r2, r6, pause_for_camera
+	br handle_timer
+
+pause_for_camera:
+    movia r8, drive_state
+    stw r0, 0(r8) #force us to break for button
+
+handle_timer:
+	movia r7, ADDR_TIMER
+    stwio r0, 0(r7) #clear timeout flag
+
+    movui r2, 5
+    stwio r2, 4(r7)
+    
+	br interrupt_epilogue
 
 toggle_flag:
     movia r8, drive_state
@@ -230,6 +325,10 @@ interrupt_epilogue:
 	ldw r10, 20(sp)
 	ldw r11, 24(sp)
 	ldw r5, 28(sp)
-	addi sp, sp, 32 # restore registers
+    ldw r3, 32(sp)
+    ldw r4, 36(sp)
+    ldw r6, 40(sp)
+   	ldw r7, 44(sp)
+	addi sp, sp, 44 # restore registers
 	subi ea, ea, 4
 	eret

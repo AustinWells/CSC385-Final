@@ -13,6 +13,8 @@
 .equ IRQ_PUSHBUTTONS, 0x02
 
 
+.equ SEG_ADDR, 0xFF200020
+
 .data
 
 drive_state:
@@ -252,7 +254,19 @@ _init_timer:
    stwio r2, 4(r7)                          # Start the timer with interrupts
    ret
 
-
+# ############## #
+# HEX DISPLAY    #
+# ############## #
+write_stop:
+  movia r2,SEG_ADDR
+  movia r3,0x6D06BF73
+  stwio r3,0(r2)        # Write to 7-seg display 
+  ret
+  
+clear_stop:
+  movia r2,SEG_ADDR
+  stwio r0,0(r2)        # Write to 7-seg display 
+  ret
 # ################### #
 # INTERRUPT STUFF     #
 # ################### #
@@ -273,7 +287,7 @@ interrupt_handler:
     stw r6, 40(sp)
    	stw r7, 44(sp)
 	rdctl et, ipending
-    
+
 read_interrupt:    
 	movia r2, IRQ_PUSHBUTTONS
 	and r2, r2, et 
@@ -292,6 +306,7 @@ check_camera:
 	br handle_timer
 
 pause_for_camera:
+	call write_stop
     movia r8, drive_state
     stw r0, 0(r8) #force us to break for button
 
@@ -305,6 +320,7 @@ handle_timer:
 	br interrupt_epilogue
 
 toggle_flag:
+	call clear_stop
     movia r8, drive_state
     ldw r9, 0(r8)
     movi r10, 0x1

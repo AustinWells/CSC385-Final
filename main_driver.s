@@ -3,6 +3,9 @@
 .equ LEGO_CTRL, 0x04
 .equ ADDR_JP1_IRQ, 0x800 
 
+.equ ADDR_Front_buffer, 0xFF203020
+.equ ADDR_Video_in_controller, 0xFF20306C
+
 .equ ADDR_PUSHBUTTONS, 0xFF200050
 .equ IRQ_PUSHBUTTONS, 0x02
 
@@ -13,7 +16,24 @@ drive_state:
 
 .text
 .global _start
+
 _start: 	
+
+_init_video:
+
+	  	movia r8,ADDR_Video_in_controller
+		movi  r9,0x4
+		stwio r9,0(r8)        # Enable video in streaming
+
+		movia r8,ADDR_Front_buffer
+		movi  r9,0x1
+		stwio r9,0(r8)        # Enable double buffer (swap pixel data from back buffer to front buffer)
+
+foo:
+		br foo
+        
+
+
 		movia sp, 0x03FFFFFC
 
 		#SETTING UP PUSH-BUTTON INTERRUPTS
